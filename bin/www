@@ -1,0 +1,168 @@
+#!/usr/bin/process.env node
+
+/**
+ * Module dependencies.
+ */
+
+var app = require('../dist/app');
+const C = require('../dist/constants/');
+const components = require('../dist/components/');
+const broker = require('../dist/config/broker');
+const db = require('../dist/config/db');
+const sync = require('../dist/config/sync');
+const mail = require('../dist/config/mailer');
+const template = require('../dist/config/templates');
+const templateLibrary = require('../templates');
+const env = require('../dist/config/env');
+const utils = require('../dist/utils/');
+var debug = require('debug')('nbkt:api:www');
+var http = require('http');
+const { EventEmitter } = require('events');
+const mediator = new EventEmitter();
+
+
+let server;
+
+function startServer() {
+  /**
+   * Get port from environment and store in Express.
+   */
+
+  let port = normalizePort(process.env.PORT || '3000');
+  app.set('port', port);
+
+  /**
+   * Create HTTP server.
+   */
+
+  server = http.createServer(app);
+
+  /**
+   * Listen on provided port, on all network interfaces.
+   */
+
+  server.listen(port);
+  server.on('error', onError);
+  server.on('listening', onListening);
+}
+
+/**
+ * Normalize a port into a number, string, or false.
+ */
+
+function normalizePort(val) {
+  var port = parseInt(val, 10);
+
+  if(isNaN(port)) {
+    // named pipe
+    return val;
+  }
+
+  if(port >= 0) {
+    // port number
+    return port;
+  }
+
+  return false;
+}
+
+/**
+ * Event listener for HTTP server "error" event.
+ */
+
+function onError(error) {
+  if(error && error.syscall !== 'listen') {
+    throw error;
+  }
+  const port = process.env.PORT;
+
+  var bind = typeof port === 'string' ? 'Pipe ' + port : 'Port ' + port;
+
+  // handle specific listen errors with friendly messages
+  switch(error ? error.code : '') {
+    case 'EACCES':
+      utils.log.error(bind + ' requires elevated privileges');
+      process.exit(1);
+      break;
+    case 'EADDRINUSE':
+      utils.log.error(bind + ' is already in use');
+      process.exit(1);
+      break;
+    default:
+      throw error;
+  }
+}
+
+/**
+ * Event listener for HTTP server "listening" event.
+ */
+
+function onListening() {
+  var addr = server.address();
+  var bind = typeof addr === 'string' ? 'pipe ' + addr : 'port ' + addr.port;
+  debug('Listening on ' + bind);
+}
+
+env.init({...process.env}, onError);
+mail.init(mediator);
+template.init(mediator, templateLibrary);
+broker.init([C.routingKeys.email].concat(utils.broker.getComponentConsumers(components)), mediator);
+
+db.initRedisCache({
+  host: process.env.CACHE_HOST,
+  port: process.env.CACHE_PORT,
+  password: process.env.CACHE_PASS
+}, mediator);
+
+db.initPostgresDB({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  pass: process.env.DB_PASS,
+  db: process.env.DB_NAME,
+  port: process.env.DB_PORT
+}, mediator);
+
+sync.init(mediator);
+
+
+mediator.on(C.events.BOOT_READY, async () => {
+  mediator.emit(C.events.CACHE_START);
+});
+
+mediator.on(C.events.CACHE_READY, client => {
+  components.Auth.repository.initCache(client);
+  mediator.emit(C.events.DB_START);
+});
+
+mediator.on(C.events.DB_READY, conn => {
+  components.Auth.repository.initDB(conn);
+  components.User.repository.init(conn);
+  mediator.emit(C.events.MAILER_START);
+});
+
+mediator.on(C.events.MAILER_READY, _handle => {
+  components.Comms.services.initMailer(_handle);
+  mediator.emit(C.events.TEMPLATES_START);
+});
+
+mediator.on(C.events.TEMPLATES_READY, _handle => {
+  components.Comms.services.initTemplates(_handle)
+  mediator.emit(C.events.BROKER_START);
+});
+
+mediator.on(C.events.BROKER_READY, async handle => {
+  await utils.broker.init(handle);
+  mediator.emit(C.events.SYNC_START);
+});
+
+mediator.on(C.events.SYNC_READY, () => {
+  startServer();
+});
+
+mediator.on(C.events.BROKER_ERROR, onError);
+mediator.on(C.events.DB_ERROR, onError);
+mediator.on(C.events.CACHE_ERROR, onError);
+mediator.on(C.events.MAILER_ERROR, onError);
+mediator.on(C.events.TEMPLATES_ERROR, onError);
+
+mediator.emit(C.events.BOOT_READY);

@@ -1,0 +1,223 @@
+version: 2.1
+executors:
+  node-env:
+    docker:
+      - image: circleci/<< pipeline.parameters.node_image >>
+  default:
+    description: A debian-based machine executor
+    machine: true
+parameters:
+  project_name:
+    type: string
+    default: nibkit
+  app_name:
+    type: string
+    default: api
+  image_name:
+    type: string
+    default: nibkit-api
+  node_image:
+    type: string
+    default: node:10.14.2
+  context:
+    type: string
+    default: nibkit
+  manifest:
+    type: string
+    default: api.yaml
+  deployment_repo:
+    type: string
+    default: git@github.com:theEMFcompany/nibkit-deployment-env.git
+  registry_base:
+    type: string
+    default: registry.digitalocean.com
+  registry_endpoint:
+    type: string
+    default: buchanora
+  repo_name:
+    type: string
+    default: api
+  git_email:
+    type: string
+    default: dev@nibkit.com
+  git_user:
+    type: string
+    default: nibkit_dev
+orbs:
+  doctl: digitalocean/cli@0.1.1
+commands:
+  setup_env:
+    description: "Set up environment variable"
+    parameters:
+      repo_path:
+        type: string
+        default: "./"
+    steps:
+      - run:
+          name: export SHA
+          command: |
+            cd << parameters.repo_path >>
+            echo "export SHORT_SHA=$(git rev-parse --short HEAD)" >> $BASH_ENV
+  deploy_candidate:
+    description: "deploy candidate branch"
+    parameters:
+      deploy_branch:
+        type: string
+        default: production_candidate
+      deploy_env:
+        type: string
+        default: production
+      image_name:
+        type: string
+        default: << pipeline.parameters.image_name >>
+      image_tag:
+        type: string
+        default: latest
+      manifest:
+        type: string
+        default: << pipeline.parameters.manifest >>
+      deploy_repo_path:
+        type: string
+        default: deploy-repo
+    steps:
+      - run:
+          name: Checkout Deploy Candidate
+          command: |
+            git clone << pipeline.parameters.deployment_repo >> << parameters.deploy_repo_path >> && \
+            cd << parameters.deploy_repo_path >> && \
+            git checkout << parameters.deploy_branch >> && \
+            mkdir -p kubernetes
+      - run:
+          name: "Generate the mainifest"
+          command: |
+            sed "s/%APP_NAME%/<< pipeline.parameters.app_name >>/g" << parameters.manifest >> | \
+            sed "s/%PROJECT_NAME%/<< pipeline.parameters.project_name >>/g" | \
+            sed "s/%REGISTRY_URL%/<< pipeline.parameters.registry_base >>\/<< pipeline.parameters.registry_endpoint >>/g" | \
+            sed "s/%IMAGE_NAME%/<< parameters.image_name >>/g" | \
+            sed "s/%DEPLOY_ENV%/<< parameters.deploy_env >>/g" | \
+            sed "s/%IMAGE_TAG%/<< parameters.image_tag >>/g" > << parameters.deploy_repo_path >>/kubernetes/<< parameters.manifest >>
+      - run:
+          name: "Push Candidate Changes"
+          command: |
+            set -x && \
+            cd << parameters.deploy_repo_path >> && \
+            git config --global user.email "<< pipeline.parameters.git_email >>" && \
+            git config --global user.name "<< pipeline.parameters.git_user >>" && \
+            git add kubernetes/<< parameters.manifest >> && \
+            git commit -m "Deploying image << parameters.image_name >>:<< parameters.image_tag >> Built from commit ${SHORT_SHA} of repository << pipeline.parameters.repo_name >> Author: $(git log --format='%an <%ae>' -n 1 HEAD)" && \
+            git push origin << parameters.deploy_branch >>
+
+jobs:
+  test_unit:
+    executor: node-env
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "package.json" }}
+            - v1-dependencies-
+      - run: yarn install
+      - save_cache:
+          paths:
+            - node_modules
+          key: v1-dependencies-{{ checksum "package.json" }}
+      - run: yarn run test
+  build-and-push-image:
+    executor: node-env
+    parameters:
+      repo_path:
+        type: string
+        default: ~/buildimage/<< pipeline.parameters.repo_name >>
+    working_directory: ~/buildimage
+    steps:
+      - checkout:
+          path: << parameters.repo_path >>
+      - setup_remote_docker:
+          version: 19.03.13
+          # docker_layer_caching: true
+      - doctl/install
+      - doctl/initialize
+      - setup_env:
+          repo_path: << parameters.repo_path >>
+      - run:
+          command: |
+            doctl registry login
+            cd << parameters.repo_path >>
+            docker build -t << pipeline.parameters.image_name >> --build-arg image=<< pipeline.parameters.node_image >> .
+            docker tag << pipeline.parameters.image_name >> << pipeline.parameters.registry_base >>/<< pipeline.parameters.registry_endpoint >>/<< pipeline.parameters.image_name >>:$SHORT_SHA
+            docker push << pipeline.parameters.registry_base >>/<< pipeline.parameters.registry_endpoint >>/<< pipeline.parameters.image_name >>:$SHORT_SHA
+  kube_deploy:
+    executor: node-env
+    parameters:
+      deploy_branch:
+        type: string
+        default: production_candidate
+      deploy_env:
+        type: string
+        default: production
+    working_directory: ~/deployment
+    steps:
+      - checkout:
+          path: ~/deployment/<< pipeline.parameters.repo_name >>
+      - run:
+          command: |
+            cp ~/deployment/<< pipeline.parameters.repo_name >>/.k8/manifest.yaml ~/deployment/<< parameters.deploy_env >>-<< pipeline.parameters.manifest >>
+      - setup_env:
+          repo_path: ~/deployment/<< pipeline.parameters.repo_name >>
+      - deploy_candidate:
+          deploy_branch: << parameters.deploy_branch >>
+          deploy_env: << parameters.deploy_env >>
+          image_name: << pipeline.parameters.image_name >>
+          image_tag: $SHORT_SHA
+          manifest: << parameters.deploy_env >>-<< pipeline.parameters.manifest >>
+workflows:
+  production-build:
+    jobs:
+      - test_unit
+      - build-and-push-image:
+          context: << pipeline.parameters.context >>
+          requires:
+            - test_unit
+          # image: << pipeline.parameters.image_name >>
+          filters:
+            branches:
+              only:
+                - /^(release|hotfix)-\d*\.\d*\.\d*/
+                - develop
+            tags:
+              only:
+                - /^v\d*\.\d*\.\d*/
+      - kube_deploy:
+          context: << pipeline.parameters.context >>
+          requires:
+            - build-and-push-image
+          deploy_branch: production-candidate
+          deploy_env: production
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d*\.\d*\.\d*/
+      - kube_deploy:
+          context: << pipeline.parameters.context >>
+          requires:
+            - build-and-push-image
+          deploy_branch: staging-candidate
+          deploy_env: staging
+          filters:
+            branches:
+              only:
+                - /^(release|hotfix)-\d*\.\d*\.\d*/
+      - kube_deploy:
+          context: << pipeline.parameters.context >>
+          requires:
+            - build-and-push-image
+          deploy_branch: develop-candidate
+          deploy_env: develop
+          filters:
+            branches:
+              only:
+                - develop

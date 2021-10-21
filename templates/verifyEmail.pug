@@ -1,0 +1,27 @@
+extends layouts/default.pug
+
+block content
+  table(width="100%")
+    tr
+      td(width="100%" style={"text-align": "center"})
+        span(style={"font-weight": "400", "font-size": "1.8rem"}) Thanks for Choosing Nibkit...
+        br/
+        br/
+        span(style={"font-weight": "400"}) You are one step away from creating amazing illustrations!
+        br/
+        span(style={"font-weight": "400"}) Please click the button below to complete your registration.
+        br/
+        br/
+    tr
+      td(width="100%" style={"text-align": "center"})
+        a(href=redirectUrl || "#", 
+          style={ 
+            "margin": "0 auto", 
+            "max-width": "300px", 
+            "background": "#12D5ED", 
+            "padding": "15px 30px 15px 30px", 
+            "border-radius": "1000px", 
+            "color": "#ffffff", 
+            "display": "block", 
+            "text-transform": "capitalize", 
+            "text-decoration": "none"}) Complete Registration

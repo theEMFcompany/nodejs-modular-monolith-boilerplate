@@ -1,0 +1,27 @@
+extends layouts/default.pug
+
+block content
+  table(width="100%")
+    tr
+      td(width="100%" style={"text-align": "center"})
+        span(style={"font-weight": "400", "font-size": "1.8rem"}) Welcome to Daju Online,
+        br/
+        br/
+        span(style={"font-weight": "400"}) We are glad you made it this far. The continent is now within your reach!
+        br/
+        span(style={"font-weight": "400"}) Start your Africa wide expansion by adding some of your organisation's inventory to our database, so prospective buyers can see what you have to offer.
+        br/
+        br/
+    tr
+      td(width="100%" style={"text-align": "center"})
+        a(href=redirectUrl || "#", 
+          style={ 
+            "margin": "0 auto", 
+            "max-width": "300px", 
+            "background": "#12D5ED", 
+            "padding": "15px 30px 15px 30px", 
+            "border-radius": "1000px", 
+            "color": "#ffffff", 
+            "display": "block", 
+            "text-transform": "capitalize", 
+            "text-decoration": "none"}) Upload your Inventory

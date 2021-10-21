@@ -1,0 +1,126 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: "%PROJECT_NAME%-%APP_NAME%-%DEPLOY_ENV%"
+  labels:
+    project: "%PROJECT_NAME%"
+    app: "%PROJECT_NAME%-%APP_NAME%-%DEPLOY_ENV%"
+    tier: backend
+    env: "%DEPLOY_ENV%"
+spec:
+  ports:
+  - port: 80
+    targetPort: 3000
+  selector:
+    app: "%PROJECT_NAME%-%APP_NAME%-%DEPLOY_ENV%"
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "%PROJECT_NAME%-%APP_NAME%-%DEPLOY_ENV%"
+spec:
+  selector:
+    matchLabels:
+      app: "%PROJECT_NAME%-%APP_NAME%-%DEPLOY_ENV%"
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        project: "%PROJECT_NAME%"
+        app: "%PROJECT_NAME%-%APP_NAME%-%DEPLOY_ENV%"
+        tier: backend
+        env: "%DEPLOY_ENV%"
+    spec:
+      containers:
+      - name: "%IMAGE_NAME%"
+        image: "%REGISTRY_URL%/%IMAGE_NAME%:%IMAGE_TAG%"
+        ports:
+          - containerPort: 3000
+        imagePullPolicy: Always
+        resources:
+          requests:
+            cpu: 50m
+            memory: 300Mi
+          limits:
+            cpu: 100m
+            memory: 400Mi
+        env:
+          - name: PORT
+            value: "3000"
+          - name: JWT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: "cred-%PROJECT_NAME%-%DEPLOY_ENV%"
+                key: jwt
+          - name: FRONT_END_URL
+            valueFrom:
+              secretKeyRef:
+                name: "cred-%PROJECT_NAME%-%DEPLOY_ENV%"
+                key: frontend_url
+          - name: HASH_SALT
+            valueFrom:
+              secretKeyRef:
+                name: "cred-%PROJECT_NAME%-%DEPLOY_ENV%"
+                key: salt
+          - name: CACHE_HOST
+            valueFrom:
+              secretKeyRef:
+                name: "cred-%PROJECT_NAME%-%DEPLOY_ENV%"
+                key: cache_host
+          - name: CACHE_USER
+            valueFrom:
+              secretKeyRef:
+                name: "cred-%PROJECT_NAME%-%DEPLOY_ENV%"
+                key: cache_user
+          - name: CACHE_PASS
+            valueFrom:
+              secretKeyRef:
+                name: "cred-%PROJECT_NAME%-%DEPLOY_ENV%"
+                key: cache_password
+          - name: CACHE_PORT
+            valueFrom:
+              secretKeyRef:
+                name: "cred-%PROJECT_NAME%-%DEPLOY_ENV%"
+                key: cache_port
+          - name: DB_HOST
+            valueFrom:
+              secretKeyRef:
+                name: "cred-%PROJECT_NAME%-%DEPLOY_ENV%"
+                key: db_core_host
+          - name: DB_USER
+            valueFrom:
+              secretKeyRef:
+                name: "cred-%PROJECT_NAME%-%DEPLOY_ENV%"
+                key: db_core_user
+          - name: DB_NAME
+            valueFrom:
+              secretKeyRef:
+                name: "cred-%PROJECT_NAME%-%DEPLOY_ENV%"
+                key: db_core_database
+          - name: DB_PASS
+            valueFrom:
+              secretKeyRef:
+                name: "cred-%PROJECT_NAME%-%DEPLOY_ENV%"
+                key: db_core_password
+          - name: DB_PORT
+            valueFrom:
+              secretKeyRef:
+                name: "cred-%PROJECT_NAME%-%DEPLOY_ENV%"
+                key: db_core_port
+          - name: BROKER_HOST
+            valueFrom:
+              secretKeyRef:
+                name: "cred-%PROJECT_NAME%-%DEPLOY_ENV%"
+                key: broker_host
+          - name: BROKER_USER
+            valueFrom:
+              secretKeyRef:
+                name: "cred-%PROJECT_NAME%-%DEPLOY_ENV%"
+                key: broker_user
+          - name: BROKER_PASS
+            valueFrom:
+              secretKeyRef:
+                name: "cred-%PROJECT_NAME%-%DEPLOY_ENV%"
+                key: broker_password

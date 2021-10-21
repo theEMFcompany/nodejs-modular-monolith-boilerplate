@@ -1,0 +1,52 @@
+{
+    "extends": "eslint:recommended",
+    "parser": "babel-eslint",
+    "env": {
+      "browser": true,
+      "node": true
+    },
+    "settings": {
+      "ecmascript": 6
+    },
+    "rules": {
+      "strict": "off",
+      "quotes": [ "error", "single", { "avoidEscape": true, "allowTemplateLiterals": true } ],
+      "camelcase": "off",
+      "no-unused-vars": [ "error", { "argsIgnorePattern": "^_" } ],
+      "space-before-blocks": [ "error" ],
+      "keyword-spacing": [ "error", {
+        "overrides": {
+          "catch":    { "after": false },
+          "for":      { "after": false },
+          "function": { "after": false },
+          "if":       { "after": false },
+          "switch":   { "after": false },
+          "while":    { "after": false }
+        }
+      }],
+      "space-before-function-paren": [ "error", {
+        "anonymous":  "never",
+        "named":      "never",
+        "asyncArrow": "ignore"
+      }]
+    },
+    "globals": {
+      "require": true,
+      "ga": true,
+      "MODULE_JSON": true,
+      "module": true,
+      "Promise": true,
+      "Set": true,
+      "expect": true,
+      "describe": true,
+      "it": true,
+      "before": true,
+      "after": true,
+      "beforeEach": true,
+      "afterEach": true,
+      "sinon": true,
+      "chai": true,
+      "fixture": true
+    }
+  }
+  

@@ -1,0 +1,82 @@
+version: "3.4"
+services:
+  api-core:
+    build:
+      context: ./
+      dockerfile: dev.Dockerfile
+    ports: 
+      - "3000:8080"
+      - "2000:2000"
+    environment:
+      PORT: "8080"
+      NODE_ENV: development
+      JWT_SECRET: secret
+      HASH_SALT: "ejnerbiu4923u8hne903"
+      FRONT_END_URL: "http://localhost:8080"
+      DB_PASS: P90X18!!V7I?
+      DB_USER: app
+      DB_NAME: app
+      DB_HOST: db
+      DB_PORT: "5432"
+      BROKER_HOST: broker
+      BROKER_USER: app
+      BROKER_PASS: iuhg786rfukuy
+      CACHE_HOST: cache
+      CACHE_USER: "admin"
+      CACHE_PASS: "admin"
+      CACHE_PORT: "6379"
+    depends_on:
+      - db
+      - broker
+      - cache
+    volumes:
+      - ".:/app"
+    networks: 
+      - app_interlink
+  db:
+    image: postgres
+    ports: 
+      - "5000:5432"
+    environment: 
+      POSTGRES_PASSWORD: P90X18!!V7I?
+      POSTGRES_USER: app
+      POSTGRES_DB: app
+      PGDATA: /var/lib/postgresql/data/db_data
+    volumes:
+      - "app_data:/var/lib/postgresql/data/db_data"
+    networks:
+      - app_interlink
+  broker:
+    image: rabbitmq:3-management
+    hostname: broker
+    ports: 
+      - "5001:5672"
+      - "6001:15672"
+    environment:
+      RABBITMQ_VM_MEMORY_HIGH_WATERMARK: "1024MiB"
+      RABBITMQ_ERLANG_COOKIE: :"Broker Cookie"
+      RABBITMQ_DEFAULT_USER: app
+      RABBITMQ_DEFAULT_PASS: iuhg786rfukuy
+    volumes:
+      - "broker_data:/var/lib/rabbitmq/mnesia/rabbit@broker"
+    networks: 
+      - app_interlink
+  cache:
+    image: redis
+    ports: 
+      - "5002:6379"
+    volumes: 
+      - "cache_data:/data"
+    networks:
+      - app_interlink
+    command: redis-server --appendonly yes
+networks: 
+  app_interlink:
+volumes:
+  cache_data:
+    driver: local
+  broker_data:
+    driver: local
+  app_data:
+    driver: local
+  

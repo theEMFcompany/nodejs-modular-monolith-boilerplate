@@ -1,0 +1,27 @@
+extends layouts/default.pug
+
+block content
+  table(width="100%")
+    tr
+      td(width="100%" style={"text-align": "center"})
+        span(style={"font-weight": "400", "font-size": "1.8rem"}) Hello,
+        br/
+        br/
+        span(style={"font-weight": "400"}) Just checking up on you since you've been away for a bit!
+        br/
+        span(style={"font-weight": "400"}) Here are a few things happening on Daju that might be of interest to you.
+        br/
+        br/
+    tr
+      td(width="100%" style={"text-align": "center"})
+        a(href=redirectUrl || "#", 
+          style={ 
+            "margin": "0 auto", 
+            "max-width": "300px", 
+            "background": "#12D5ED", 
+            "padding": "15px 30px 15px 30px", 
+            "border-radius": "1000px", 
+            "color": "#ffffff", 
+            "display": "block", 
+            "text-transform": "capitalize", 
+            "text-decoration": "none"}) Complete Registration

@@ -1,0 +1,10 @@
+{
+    "apps" : [
+        {
+            "name" : "dev",
+            "script" : "./bin/www",
+            "watch": true,
+            "ignore_watch" : ["./node_modules", "node_modules", "./src", "src", ".k8", ".circleci", ".git"]
+        }
+    ]
+}
