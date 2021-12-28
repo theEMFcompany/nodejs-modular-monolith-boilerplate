@@ -1,14 +1,21 @@
-# Development Environment Requirements
+
+## Development Environment Requirements
 1. Docker
-2. Docker Compose
-# Development Steps
+## Development Steps
 
-## Initial Steps
-* `nvm use`
-* `yarn run scripts:setup`
-* `yarn run compose:build`
-* `yarn run compose:up`
+## Initial Setup
+* `cd <project-directory>`
+* `docker compose build`
+* `docker compose up`
 
-## Consequent uses Steps
-* `nvm use`
-* `yarn run compose:up`
+## Consequent Use
+* `docker compose up`
+
+## Commands
+Run commands (eg testing) in the docker-compose service with `docker compose exec <command>`
+
+## Migrations
+Run migrations in the docker-compose service with `docker compose exec api yarn run migrate:latest`
+Rollback migrations in the docker-compose service with `docker compose exec api yarn run migrate:rollback`
+
+The Boilerplate for this project was generated on 2021-12-28 using [ts-ddd-modulith-boilerplate](https://github.com/theEMFcompany/ts-ddd-modulith-boilerplate).

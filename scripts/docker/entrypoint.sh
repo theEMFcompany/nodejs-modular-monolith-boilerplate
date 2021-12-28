@@ -11,7 +11,6 @@ main() {
 
 run_migration() {
     echo "Running DB migrations"
-    node node_modules/knex/bin/cli.js migrate:rollback
     node node_modules/knex/bin/cli.js migrate:latest
 }
 
